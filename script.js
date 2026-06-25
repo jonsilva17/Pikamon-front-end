@@ -61,9 +61,9 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
             teamContainer.appendChild(card);
         });
 
-        // Adicionar o Botão de Guardar se o utilizador estiver logado
-        const logado = localStorage.getItem("utilizadorLogado");
-        if (logado) {
+        // 🛡️ ALTERADO: Vamos verificar se existe um Token JWT guardado no navegador
+        const token = localStorage.getItem("token");
+        if (token) {
             // Remove botão antigo se existir para não duplicar
             const botaoAntigo = document.getElementById("save-team-btn");
             if (botaoAntigo) botaoAntigo.remove();
@@ -81,24 +81,26 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
             
             saveBtn.addEventListener("click", async () => {
                 try {
-                    // MELHORIA: Juntamos os oponentes pesquisados e os counters num único pacote JSON
                     const dadosParaGuardar = {
-                        oponentes: input, // Guarda o texto original que pesquisaste (ex: "Charizard, Pikachu")
+                        oponentes: input,
                         counters: window.equipaGeradaAtual
                     };
 
                     const res = await fetch(`${API_URL}/guardar-equipa`, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        // 🛡️ ALTERADO: Adicionámos a autorização com o Token Bearer nos Headers
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}` 
+                        },
                         body: JSON.stringify({
-                            username: logado,
-                            equipa: JSON.stringify(dadosParaGuardar) // Envia o pacote completo estruturado
+                            equipa: JSON.stringify(dadosParaGuardar) // O Python agora sabe quem és pelo Token!
                         })
                     });
                     
                     const resData = await res.json();
                     if (res.ok) {
-                        alert(resData.message); // Mensagem de sucesso do Python
+                        alert(resData.message); 
                     } else {
                         alert("Erro do Servidor: " + resData.error);
                     }
@@ -113,5 +115,5 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
         loading.classList.add("hidden");
         errorMsg.innerText = error.message;
         errorMsg.classList.remove("hidden");
-    } // <-- Fecha o bloco catch principal de forma correta
-}); // <-- Fecha a função do addEventListener do botão suggest-btn
+    } 
+});
