@@ -40,8 +40,23 @@
     </div>
 
     <script>
+        // 1. CAPTURAR OS DADOS DO GOOGLE VINDO DA URL (CALLBACK)
+        const params = new URLSearchParams(window.location.search);
+        const tokenFromUrl = params.get("token");
+        const userFromUrl = params.get("user");
+
+        // Se o token e o utilizador vieram na URL, guarda no localStorage
+        if (tokenFromUrl && userFromUrl) {
+            localStorage.setItem("token", tokenFromUrl);
+            localStorage.setItem("utilizadorLogado", userFromUrl);
+            
+            // Limpa os parâmetros da barra de endereço para segurança e estética
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // 2. VERIFICAR SE O UTILIZADOR ESTÁ LOGADO (Seja via formulário ou via Google)
         const logado = localStorage.getItem("utilizadorLogado");
-        if(logado) {
+        if (logado) {
             document.getElementById("userStatus").innerHTML = `Olá, <b>${logado}</b>! | <a href="historico.html" style="color: #007bff; text-decoration: none;">Ver O Meu Histórico</a> | <a href="#" onclick="localStorage.clear(); location.reload();" style="color: red; text-decoration: none; margin-left: 10px;">Sair</a>`;
         }
     </script>
