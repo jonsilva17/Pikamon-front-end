@@ -26,47 +26,44 @@
     <script>
         const API_URL = "https://pikamon-ai.onrender.com";
         const user = localStorage.getItem("utilizadorLogado");
-        const token = localStorage.getItem("token"); // 🛡️ Captura o token guardado no login
+        const token = localStorage.getItem("token"); 
 
         if (!user) {
             document.getElementById("listaEquipas").innerHTML = `<p style="color:red; font-weight:bold;">Precisas de fazer login para ver o teu histórico!</p><a href="login.html">Ir para a página de Login</a>`;
         } else {
             document.getElementById("titulo").innerText = `Equipas de ${user} 💾`;
 
-            // 🛡️ CORRIGIDO: Enviamos o cabeçalho de Autorização para o Python não bloquear o pedido
-            fetch(`${API_URL}/historico/${user}`, {
+            // 🛡️ CORRIGIDO: Rota alterada de /historico/${user} para apenas /historico
+            fetch(`${API_URL}/historico`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": token ? `Bearer ${token}` : ""
                 }
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("Erro na resposta do servidor");
+                return res.json();
+            })
             .then(data => {
                 renderizarHistoricoCompleto(data.historico || []);
             })
             .catch(err => {
                 console.error("Erro ao ligar ao servidor, a usar histórico local:", err);
-                // Se o servidor der erro ou estiver offline, tentamos mostrar as locais
                 renderizarHistoricoCompleto([]);
             });
         }
 
-        // Função centralizada para desenhar os cards na tela
         function renderizarHistoricoCompleto(historicoServidor) {
             const container = document.getElementById("listaEquipas");
             container.innerHTML = "";
 
-            // 🔄 FALLBACK: Vai buscar as equipas que foram salvas localmente no navegador
             let historicoLocal = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
-            
-            // Unir as equipas do servidor com as locais (transformando as locais no formato esperado pelo teu loop)
             let listaFinal = [...historicoServidor];
             
             historicoLocal.forEach(localItem => {
                 listaFinal.push({
                     data: localItem.data || new Date(),
-                    // Simulamos a estrutura do banco de dados para o teu código ler igual
                     equipa: JSON.stringify({ oponentes: localItem.oponentes, counters: localItem.counters })
                 });
             });
@@ -76,18 +73,16 @@
                 return;
             }
 
-            // Renderiza todas as equipas encontradas
             listaFinal.forEach(item => {
                 try {
                     const dadosEquipa = typeof item.equipa === 'string' ? JSON.parse(item.equipa) : item.equipa;
                     
-                    // Tratamento caso a data seja uma string normal ou um timestamp ISO do servidor
                     let dataFormatada;
                     try {
                         dataFormatada = new Date(item.data).toLocaleString("pt-PT");
                         if (dataFormatada.includes("Invalid")) throw new Error();
                     } catch {
-                        dataFormatada = item.data; // Mantém o formato original caso já seja uma string local
+                        dataFormatada = item.data; 
                     }
 
                     const card = document.createElement("div");
