@@ -51,75 +51,83 @@
     <a href="index.html" class="voltar">← Voltar ao Gerador Sem Conta</a>
 
     <script>
-        // Aponta diretamente para o teu Python ativo na porta 5000
-        const API_URL = "https://pikamon-ai.onrender.com";
+    // Aponta diretamente para o teu Python ativo
+    const API_URL = "https://pikamon-ai.onrender.com";
 
-        // --- REGISTO ---
-        document.getElementById("registerForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const username = document.getElementById("regUser").value;
-            const password = document.getElementById("regPass").value;
-            const msg = document.getElementById("registerMsg");
+    // --- REGISTO ---
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("regUser").value;
+        const password = document.getElementById("regPass").value;
+        const msg = document.getElementById("registerMsg");
 
-            msg.style.color = "orange";
-            msg.innerText = "A criar conta...";
+        msg.style.color = "orange";
+        msg.innerText = "A criar conta...";
 
-            try {
-                const res = await fetch(`${API_URL}/register`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    msg.style.color = "green";
-                    msg.innerText = data.message;
-                    document.getElementById("registerForm").reset();
-                } else {
-                    msg.style.color = "red";
-                    msg.innerText = data.error || "Erro ao registar.";
-                }
-            } catch (err) {
+        try {
+            const res = await fetch(`${API_URL}/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                msg.style.color = "green";
+                msg.innerText = data.message;
+                document.getElementById("registerForm").reset();
+            } else {
                 msg.style.color = "red";
-                msg.innerText = "Erro ao ligar ao servidor backend.";
+                msg.innerText = data.error || "Erro ao registar.";
             }
-        });
+        } catch (err) {
+            msg.style.color = "red";
+            msg.innerText = "Erro ao ligar ao servidor backend.";
+        }
+    });
 
-        // --- LOGIN ---
-        document.getElementById("loginForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const username = document.getElementById("loginUser").value;
-            const password = document.getElementById("loginPass").value;
-            const msg = document.getElementById("loginMsg");
+    // --- LOGIN CORRIGIDO ---
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("loginUser").value;
+        const password = document.getElementById("loginPass").value;
+        const msg = document.getElementById("loginMsg");
 
-            msg.style.color = "orange";
-            msg.innerText = "A verificar...";
+        msg.style.color = "orange";
+        msg.innerText = "A verificar...";
 
-            try {
-                const res = await fetch(`${API_URL}/login`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
+        try {
+            const res = await fetch(`${API_URL}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                msg.style.color = "green";
+                msg.innerText = data.message || "Login efetuado!";
                 
-                if (res.ok) {
-                    msg.style.color = "green";
-                    msg.innerText = data.message;
-                    localStorage.setItem("utilizadorLogado", data.user);
-                    setTimeout(() => {
-                        window.location.href = "index.html";
-                    }, 1200);
-                } else {
-                    msg.style.color = "red";
-                    msg.innerText = data.error || "Credenciais incorretas.";
-                }
-            } catch (err) {
+                // Guardar o token JWT recebido do servidor
+                localStorage.setItem("token", data.token);
+                
+                // 🛡️ CORREÇÃO SEGURA: Se o Python devolver 'user' ou 'username', nós apanhamos. 
+                // Se não devolver nenhum, guardamos a variável 'username' que o utilizador digitou na caixa!
+                const nomeDefinitivo = data.user || data.username || username;
+                localStorage.setItem("utilizadorLogado", nomeDefinitivo);
+                
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 1200);
+            } else {
                 msg.style.color = "red";
-                msg.innerText = "Erro ao ligar ao servidor backend.";
+                msg.innerText = data.error || "Credenciais incorretas.";
             }
-        });
-    </script>
+        } catch (err) {
+            msg.style.color = "red";
+            msg.innerText = "Erro ao ligar ao servidor backend.";
+        }
+    });
+</script>
 </body>
 </html>

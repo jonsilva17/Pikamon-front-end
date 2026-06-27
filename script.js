@@ -61,8 +61,9 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
             teamContainer.appendChild(card);
         });
 
-        // 🛡️ ALTERADO: Vamos verificar se existe um Token JWT guardado no navegador
-        const token = localStorage.getItem("token");
+        // 🛡️ CORRIGIDO: Verifica se o utilizador está autenticado (seja por token ou sessão local)
+        const token = localStorage.getItem("token") || localStorage.getItem("utilizadorLogado");
+        
         if (token) {
             // Remove botão antigo se existir para não duplicar
             const botaoAntigo = document.getElementById("save-team-btn");
@@ -78,36 +79,47 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
             saveBtn.style.border = "none";
             saveBtn.style.borderRadius = "5px";
             saveBtn.style.cursor = "pointer";
+            saveBtn.style.fontWeight = "bold";
             
             saveBtn.addEventListener("click", async () => {
-                try {
-                    const dadosParaGuardar = {
-                        oponentes: input,
-                        counters: window.equipaGeradaAtual
-                    };
+                const dadosParaGuardar = {
+                    oponentes: input,
+                    counters: window.equipaGeradaAtual,
+                    data: new Date().toLocaleDateString('pt-PT')
+                };
 
-                    const res = await fetch(`${API_URL}/guardar-equipa`, {
-                        method: "POST",
-                        // 🛡️ ALTERADO: Adicionámos a autorização com o Token Bearer nos Headers
-                        headers: { 
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}` 
-                        },
-                        body: JSON.stringify({
-                            equipa: JSON.stringify(dadosParaGuardar) // O Python agora sabe quem és pelo Token!
-                        })
-                    });
-                    
-                    const resData = await res.json();
-                    if (res.ok) {
-                        alert(resData.message); 
-                    } else {
-                        alert("Erro do Servidor: " + resData.error);
+                // Se tivermos um Token JWT, tentamos salvar na Base de Dados do Python (Render)
+                const jwtToken = localStorage.getItem("token");
+                if (jwtToken) {
+                    try {
+                        const res = await fetch(`${API_URL}/guardar-equipa`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}` 
+                            },
+                            body: JSON.stringify({
+                                equipa: JSON.stringify(dadosParaGuardar)
+                            })
+                        });
+                        
+                        const resData = await res.json();
+                        if (res.ok) {
+                            alert(resData.message || "Equipa guardada com sucesso no servidor!");
+                            return; // Para a execução se deu certo no servidor
+                        }
+                    } catch (err) {
+                        console.log("Erro ao salvar no servidor, a tentar fallback local...", err);
                     }
-                } catch (err) {
-                    alert("Erro de Rede: Não foi possível contactar o backend.");
                 }
+
+                // 🔄 FALLBACK LOCAL: Se o Render falhar ou não houver JWT, salva no localStorage do próprio navegador
+                let historicoLocal = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
+                historicoLocal.push(dadosParaGuardar);
+                localStorage.setItem("historicoEquipas", JSON.stringify(historicoLocal));
+                alert("Guardado localmente no navegador (Histórico ativado)!");
             });
+
             resultSection.appendChild(saveBtn);
         }
 
