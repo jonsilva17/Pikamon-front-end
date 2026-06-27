@@ -26,44 +26,84 @@
     <script>
         const API_URL = "https://pikamon-ai.onrender.com";
         const user = localStorage.getItem("utilizadorLogado");
+        const token = localStorage.getItem("token"); // 🛡️ Captura o token guardado no login
 
         if (!user) {
             document.getElementById("listaEquipas").innerHTML = `<p style="color:red; font-weight:bold;">Precisas de fazer login para ver o teu histórico!</p><a href="login.html">Ir para a página de Login</a>`;
         } else {
             document.getElementById("titulo").innerText = `Equipas de ${user} 💾`;
 
-            fetch(`${API_URL}/historico/${user}`)
-                .then(res => res.json())
-                .then(data => {
-                    const container = document.getElementById("listaEquipas");
-                    container.innerHTML = "";
+            // 🛡️ CORRIGIDO: Enviamos o cabeçalho de Autorização para o Python não bloquear o pedido
+            fetch(`${API_URL}/historico/${user}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": token ? `Bearer ${token}` : ""
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                renderizarHistoricoCompleto(data.historico || []);
+            })
+            .catch(err => {
+                console.error("Erro ao ligar ao servidor, a usar histórico local:", err);
+                // Se o servidor der erro ou estiver offline, tentamos mostrar as locais
+                renderizarHistoricoCompleto([]);
+            });
+        }
 
-                    if (!data.historico || data.historico.length === 0) {
-                        container.innerHTML = "<p>Ainda não guardaste nenhuma equipa automática. Vai à página principal e gera uma!</p>";
-                        return;
+        // Função centralizada para desenhar os cards na tela
+        function renderizarHistoricoCompleto(historicoServidor) {
+            const container = document.getElementById("listaEquipas");
+            container.innerHTML = "";
+
+            // 🔄 FALLBACK: Vai buscar as equipas que foram salvas localmente no navegador
+            let historicoLocal = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
+            
+            // Unir as equipas do servidor com as locais (transformando as locais no formato esperado pelo teu loop)
+            let listaFinal = [...historicoServidor];
+            
+            historicoLocal.forEach(localItem => {
+                listaFinal.push({
+                    data: localItem.data || new Date(),
+                    // Simulamos a estrutura do banco de dados para o teu código ler igual
+                    equipa: JSON.stringify({ oponentes: localItem.oponentes, counters: localItem.counters })
+                });
+            });
+
+            if (listaFinal.length === 0) {
+                container.innerHTML = "<p>Ainda não guardaste nenhuma equipa automática. Vai à página principal e gera uma!</p>";
+                return;
+            }
+
+            // Renderiza todas as equipas encontradas
+            listaFinal.forEach(item => {
+                try {
+                    const dadosEquipa = typeof item.equipa === 'string' ? JSON.parse(item.equipa) : item.equipa;
+                    
+                    // Tratamento caso a data seja uma string normal ou um timestamp ISO do servidor
+                    let dataFormatada;
+                    try {
+                        dataFormatada = new Date(item.data).toLocaleString("pt-PT");
+                        if (dataFormatada.includes("Invalid")) throw new Error();
+                    } catch {
+                        dataFormatada = item.data; // Mantém o formato original caso já seja uma string local
                     }
 
-                    data.historico.forEach(item => {
-                        const dadosEquipa = JSON.parse(item.equipa);
-                        const dataFormatada = new Date(item.data).toLocaleString("pt-PT");
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    
+                    let htmlContent = `<div class="data">📅 Gerada em: ${dataFormatada}</div>`;
+                    
+                    let listaPokemons = [];
+                    if (dadosEquipa.oponentes && dadosEquipa.counters) {
+                        htmlContent += `<div style="margin-bottom: 12px; font-weight: bold; color: #e63946;">⚔️ Contra: <span style="color: #333;">${dadosEquipa.oponentes}</span></div>`;
+                        listaPokemons = dadosEquipa.counters.suggested_team || dadosEquipa.counters;
+                    } else {
+                        listaPokemons = dadosEquipa.suggested_team || dadosEquipa;
+                    }
 
-                        const card = document.createElement("div");
-                        card.className = "card";
-                        
-                        let htmlContent = `<div class="data">📅 Gerada em: ${dataFormatada}</div>`;
-                        
-                        // Verificar se tem os oponentes guardados (novo formato) ou se é o formato antigo
-                        let listaPokemons = [];
-                        if (dadosEquipa.oponentes && dadosEquipa.counters) {
-                            // FORMATO NOVO: Mostra o que pesquisaste no topo do card
-                            htmlContent += `<div style="margin-bottom: 12px; font-weight: bold; color: #e63946;">⚔️ Contra: <span style="color: #333;">${dadosEquipa.oponentes}</span></div>`;
-                            listaPokemons = dadosEquipa.counters.suggested_team || dadosEquipa.counters;
-                        } else {
-                            // FORMATO ANTIGO (Suporte para não quebrar o que já tinhas)
-                            listaPokemons = dadosEquipa.suggested_team || dadosEquipa;
-                        }
-
-                        // Desenha os counters
+                    if (Array.isArray(listaPokemons)) {
                         listaPokemons.forEach(p => {
                             htmlContent += `
                                 <div class="poke-item">
@@ -71,15 +111,14 @@
                                     <span class="poke-reason">${p.reason}</span>
                                 </div>`;
                         });
+                    }
 
-                        card.innerHTML = htmlContent;
-                        container.appendChild(card);
-                    });
-                })
-                .catch(err => {
-                    console.error("Erro completo:", err);
-                    document.getElementById("listaEquipas").innerHTML = "<p style='color:red;'>Erro ao carregar os dados do servidor. Verifica se o Python está ligado.</p>";
-                });
+                    card.innerHTML = htmlContent;
+                    container.appendChild(card);
+                } catch (e) {
+                    console.error("Erro ao processar item do histórico:", e, item);
+                }
+            });
         }
     </script>
 </body>
