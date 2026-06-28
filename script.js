@@ -81,6 +81,28 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
             saveBtn.style.cursor = "pointer";
             saveBtn.style.fontWeight = "bold";
             
+            async function tentarGuardarNoServidor(dados, tentativa = 1) {
+                const jwtToken = localStorage.getItem("token");
+                if (!jwtToken) return false;
+                try {
+                    const res = await fetch(`${API_URL}/guardar-equipa`, {
+                        method: "POST",
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${jwtToken}` 
+                        },
+                        body: JSON.stringify({ equipa: JSON.stringify(dados) })
+                    });
+                    return res.ok;
+                } catch (err) {
+                    if (tentativa < 2) {
+                        await new Promise(r => setTimeout(r, 3000));
+                        return tentarGuardarNoServidor(dados, 2);
+                    }
+                    return false;
+                }
+            }
+
             saveBtn.addEventListener("click", async () => {
                 const dadosParaGuardar = {
                     oponentes: input,
@@ -88,36 +110,18 @@ document.getElementById("suggest-btn").addEventListener("click", async () => {
                     data: new Date().toLocaleDateString('pt-PT')
                 };
 
-                // Se tivermos um Token JWT, tentamos salvar na Base de Dados do Python (Render)
-                const jwtToken = localStorage.getItem("token");
-                if (jwtToken) {
-                    try {
-                        const res = await fetch(`${API_URL}/guardar-equipa`, {
-                            method: "POST",
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "Authorization": `Bearer ${jwtToken}` 
-                            },
-                            body: JSON.stringify({
-                                equipa: JSON.stringify(dadosParaGuardar)
-                            })
-                        });
-                        
-                        const resData = await res.json();
-                        if (res.ok) {
-                            alert(resData.message || "Equipa guardada com sucesso no servidor!");
-                            return; // Para a execução se deu certo no servidor
-                        }
-                    } catch (err) {
-                        console.log("Erro ao salvar no servidor, a tentar fallback local...", err);
-                    }
+                // Tentar salvar no servidor (com retry se o Render estiver a dormir)
+                const servidorOk = await tentarGuardarNoServidor(dadosParaGuardar);
+                if (servidorOk) {
+                    alert("Equipa guardada com sucesso no servidor!");
+                    return;
                 }
 
-                // 🔄 FALLBACK LOCAL: Se o Render falhar ou não houver JWT, salva no localStorage do próprio navegador
+                // 🔄 FALLBACK LOCAL: Se falhar, salva no navegador
                 let historicoLocal = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
                 historicoLocal.push(dadosParaGuardar);
                 localStorage.setItem("historicoEquipas", JSON.stringify(historicoLocal));
-                alert("Guardado localmente no navegador (Histórico ativado)!");
+                alert("Guardado no navegador — as tuas equipas ficam seguras mesmo depois de sair!");
             });
 
             resultSection.appendChild(saveBtn);

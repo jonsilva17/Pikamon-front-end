@@ -57,7 +57,7 @@
         // 2. VERIFICAR SE O UTILIZADOR ESTÁ LOGADO (Seja via formulário ou via Google)
         const logado = localStorage.getItem("utilizadorLogado");
         if (logado) {
-            document.getElementById("userStatus").innerHTML = `Olá, <b>${logado}</b>! | <a href="historico.html" style="color: #007bff; text-decoration: none;">Ver O Meu Histórico</a> | <a href="#" onclick="localStorage.clear(); location.reload();" style="color: red; text-decoration: none; margin-left: 10px;">Sair</a>`;
+            document.getElementById("userStatus").innerHTML = `Olá, <b>${logado}</b>! | <a href="historico.html" style="color: #007bff; text-decoration: none;">Ver O Meu Histórico</a> | <a href="#" onclick="localStorage.removeItem('token'); localStorage.removeItem('utilizadorLogado'); location.reload();" style="color: red; text-decoration: none; margin-left: 10px;">Sair</a>`;
         }
     </script>
     <script src="script.js"></script>

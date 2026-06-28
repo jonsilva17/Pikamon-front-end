@@ -13,6 +13,9 @@
         .poke-item { background: #f8f9fa; padding: 8px 12px; margin: 5px 0; border-radius: 6px; font-size: 15px; }
         .poke-name { font-weight: bold; color: #111; }
         .poke-reason { font-style: italic; color: #555; font-size: 14px; }
+        .sync-btn { display: inline-block; padding: 8px 16px; background-color: #ffc107; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-bottom: 20px; transition: background 0.2s; }
+        .sync-btn:hover { background-color: #e0a800; }
+        .sync-msg { font-size: 13px; color: #666; margin-top: 5px; min-height: 20px; }
     </style>
 </head>
 <body>
@@ -20,6 +23,10 @@
     <div class="container">
         <a href="index.html" class="voltar">← Voltar ao Gerador</a>
         <h1 id="titulo">As Minhas Equipas Guardadas</h1>
+        <div id="syncArea" style="display:none;">
+            <button id="syncBtn" class="sync-btn">⬆ Sincronizar equipas locais com o servidor</button>
+            <div id="syncMsg" class="sync-msg"></div>
+        </div>
         <div id="listaEquipas">A carregar o teu histórico...</div>
     </div>
 
@@ -115,6 +122,58 @@
                 }
             });
         }
+
+        // Mostrar botão de sincronização se houver equipas locais e token
+        const historicoLocal = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
+        if (historicoLocal.length > 0 && token) {
+            document.getElementById("syncArea").style.display = "block";
+        }
+
+        document.getElementById("syncBtn")?.addEventListener("click", async () => {
+            const btn = document.getElementById("syncBtn");
+            const msg = document.getElementById("syncMsg");
+            btn.disabled = true;
+            btn.innerText = "A sincronizar...";
+            msg.innerText = "";
+
+            let local = JSON.parse(localStorage.getItem("historicoEquipas")) || [];
+            let sucessos = 0;
+            let erros = 0;
+
+            for (const item of local) {
+                try {
+                    const res = await fetch(`${API_URL}/guardar-equipa`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            equipa: JSON.stringify({
+                                oponentes: item.oponentes,
+                                counters: item.counters,
+                                data: item.data
+                            })
+                        })
+                    });
+                    if (res.ok) sucessos++;
+                    else erros++;
+                } catch {
+                    erros++;
+                }
+            }
+
+            if (erros === 0) {
+                localStorage.removeItem("historicoEquipas");
+                msg.innerText = `${sucessos} equipa(s) sincronizada(s) com sucesso!`;
+                document.getElementById("syncArea").style.display = "none";
+                location.reload();
+            } else {
+                msg.innerText = `${sucessos} sincronizada(s), ${erros} falha(s). Tente novamente.`;
+                btn.disabled = false;
+                btn.innerText = "⬆ Sincronizar equipas locais com o servidor";
+            }
+        });
     </script>
 </body>
 </html>
